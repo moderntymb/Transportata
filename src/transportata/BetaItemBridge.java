@@ -4,6 +4,7 @@ import mindustry.content.Blocks;
 import mindustry.world.blocks.distribution.ItemBridge;
 
 public class BetaItemBridge extends ItemBridge{
+
     public BetaItemBridge(String name){
         super(name);
     }
@@ -11,9 +12,12 @@ public class BetaItemBridge extends ItemBridge{
     @Override
     public void load(){
         super.load();
-        region = Blocks.itemBridge.region;
-        endRegion = Blocks.itemBridge.endRegion;
-        bridgeRegion = Blocks.itemBridge.bridgeRegion;
-        arrowRegion = Blocks.itemBridge.arrowRegion;
+
+        ItemBridge vanilla = (ItemBridge)Blocks.itemBridge;
+
+        region = vanilla.region;
+        endRegion = vanilla.endRegion;
+        bridgeRegion = vanilla.bridgeRegion;
+        arrowRegion = vanilla.arrowRegion;
     }
 }
