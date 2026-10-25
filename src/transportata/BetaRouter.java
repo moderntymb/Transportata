@@ -1,19 +1,16 @@
 package transportata;
 
 import mindustry.content.Blocks;
-import mindustry.world.blocks.distribution.ItemBridge;
+import mindustry.world.blocks.distribution.Router;
 
-public class BetaItemBridge extends ItemBridge{
-    public BetaItemBridge(String name){
+public class BetaRouter extends Router{
+    public BetaRouter(String name){
         super(name);
     }
 
     @Override
     public void load(){
         super.load();
-        region = Blocks.itemBridge.region;
-        endRegion = Blocks.itemBridge.endRegion;
-        bridgeRegion = Blocks.itemBridge.bridgeRegion;
-        arrowRegion = Blocks.itemBridge.arrowRegion;
+        region = size == 1 ? Blocks.router.region : Blocks.distributor.region;
     }
-  }
+}
