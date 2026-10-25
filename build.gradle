@@ -1,0 +1,54 @@
+apply plugin: "java"
+
+sourceSets.main.java.srcDirs = ["src"]
+
+ext{
+    mindustryVersion = "v160"
+    isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
+    sdkRoot = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+}
+
+repositories{
+    mavenCentral()
+    ivy{
+        url = 'https://github.com/'
+        patternLayout{ artifact('/[organisation]/[module]/releases/download/[revision]/dependencies.jar') }
+        metadataSources{ artifact() }
+        content{ includeVersion("Anuken", "Mindustry", mindustryVersion) }
+    }
+}
+
+java{
+    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies{
+    compileOnly "Anuken:Mindustry:$mindustryVersion"
+}
+
+jar{
+    archiveFileName = "TransportataDesktop.jar"
+    from(projectDir){ include "mod.hjson" }
+    from("assets/"){ include "**" }
+}
+
+tasks.register('jarAndroid'){
+    dependsOn "jar"
+    doLast{
+        if(!sdkRoot || !new File(sdkRoot).exists()) throw new GradleException("No valid Android SDK found.")
+        def platformRoot = new File("$sdkRoot/platforms/").listFiles().sort().reverse().find{ f -> new File(f, "android.jar").exists() }
+        if(!platformRoot) throw new GradleException("No android.jar found.")
+        def deps = (configurations.compileClasspath.asList() + configurations.runtimeClasspath.asList() + [new File(platformRoot, "android.jar")]).collect{ "--classpath $it.path" }.join(" ")
+        def d8 = isWindows ? "d8.bat" : "d8"
+        "$d8 $deps --min-api 21 --output TransportataAndroid.jar TransportataDesktop.jar".execute(null, new File("build/libs")).waitForProcessOutput(System.out, System.err)
+    }
+}
+
+tasks.register('deploy', Jar){
+    dependsOn jarAndroid
+    dependsOn jar
+    archiveFileName = "Transportata.jar"
+    from{ [zipTree("build/libs/TransportataDesktop.jar"), zipTree("build/libs/TransportataAndroid.jar")] }
+    doLast{ delete{ delete "build/libs/TransportataAndroid.jar" } }
+}

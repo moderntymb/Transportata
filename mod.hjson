@@ -1,0 +1,8 @@
+displayName: "Transportata"
+name: "transportata"
+author: "Danv"
+main: "transportata.TransportataMod"
+description: "[accent]BETA[] - Experimental multi-size transport blocks. First test tier: titanium routers, junctions and item bridges in 1x1, 2x2 and 3x3 sizes."
+version: "0.1.0"
+minGameVersion: "160"
+java: true
