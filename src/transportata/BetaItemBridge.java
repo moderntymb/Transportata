@@ -17,7 +17,7 @@ public class BetaItemBridge extends ItemBridge{
 
     /*
      * Тимчасовий колір полотна.
-     * Нормальні текстури зробимо пізніше.
+     * Графіку зробимо пізніше.
      */
     public Color betaBridgeColor = Color.valueOf("6c7690");
 
@@ -26,18 +26,13 @@ public class BetaItemBridge extends ItemBridge{
     }
 
     /*
-     * Тимчасовий костиль для 2x2.
+     * Перевірка дальності.
      *
-     * Опорний tile у блока 2x2 не знаходиться
-     * в геометричному центрі.
+     * Для 1x1 та 3x3 залишаємо ванільну логіку.
      *
-     * Через це в двох напрямках губиться один тайл.
-     *
-     * Для 2x2:
-     * вправо  -> +1
-     * вгору   -> +1
-     *
-     * Для 1x1 і 3x3 нічого не змінюємо.
+     * Для 2x2 використовуємо спеціальну перевірку:
+     * опорний tile вважаємо не точкою 1x1,
+     * а квадратом 2x2.
      */
     @Override
     public boolean positionsValid(
@@ -48,35 +43,75 @@ public class BetaItemBridge extends ItemBridge{
         int baseRange
     ){
 
-        // тільки пряма лінія
-        if(x1 != x2 && y1 != y2){
+        if(size != 2){
+            return super.positionsValid(
+                x1,
+                y1,
+                x2,
+                y2,
+                baseRange
+            );
+        }
+
+        /*
+         * 2x2 у Mindustry прив'язаний до одного tile.
+         *
+         * Для нашої перевірки уявляємо:
+         *
+         * x1,y1
+         *   ┌─────┐
+         *   │     │
+         *   │ 2x2 │
+         *   │     │
+         *   └─────┘
+         *
+         * і так само для другого блока.
+         */
+
+        int dx = x2 - x1;
+        int dy = y2 - y1;
+
+        /*
+         * Діагональні мости заборонені.
+         */
+        if(dx != 0 && dy != 0){
             return false;
         }
 
-        int actualRange = baseRange;
+        /*
+         * Відстань між опорними tile.
+         */
+        int distance =
+            Math.max(
+                Math.abs(dx),
+                Math.abs(dy)
+            );
 
-        if(size == 2){
+        /*
+         * Два блоки мають ширину 2.
+         *
+         * Між їхніми найближчими краями відстань
+         * на один тайл менша, ніж між опорними tile.
+         *
+         * Тому:
+         *
+         * vanilla:
+         *
+         * X----------X
+         *
+         * наш 2x2:
+         *
+         * [XX]------[XX]
+         *
+         * Компенсуємо цей один тайл.
+         */
+        int edgeDistance =
+            Math.max(
+                0,
+                distance - 1
+            );
 
-            /*
-             * Вправо.
-             */
-            if(y1 == y2 && x2 > x1){
-                actualRange += 1;
-            }
-
-            /*
-             * Вгору.
-             */
-            if(x1 == x2 && y2 > y1){
-                actualRange += 1;
-            }
-        }
-
-        if(x1 == x2){
-            return Math.abs(y1 - y2) <= actualRange;
-        }
-
-        return Math.abs(x1 - x2) <= actualRange;
+        return edgeDistance <= baseRange;
     }
 
     public class BetaItemBridgeBuild extends ItemBridgeBuild{
@@ -85,14 +120,19 @@ public class BetaItemBridge extends ItemBridge{
         public void draw(){
 
             /*
-             * Малюємо сам блок.
+             * Сам блок.
              *
-             * Не викликаємо ванільний ItemBridgeBuild.draw(),
-             * бо він намалює старе вузьке полотно.
+             * ItemBridgeBuild.draw() не викликаємо,
+             * бо він намалює ванільне вузьке полотно.
              */
-            Draw.rect(block.region, x, y);
+            Draw.rect(
+                block.region,
+                x,
+                y
+            );
 
-            Tile other = Vars.world.tile(link);
+            Tile other =
+                Vars.world.tile(link);
 
             if(!linkValid(tile, other)){
                 return;
@@ -105,36 +145,50 @@ public class BetaItemBridge extends ItemBridge{
             Draw.z(Layer.power);
 
             float alpha =
-                (fadeIn
-                    ? Math.max(
-                        hasPower ? warmup : 1f,
-                        0.25f
-                    )
-                    : 1f)
+                (
+                    fadeIn
+                        ? Math.max(
+                            hasPower
+                                ? warmup
+                                : 1f,
+                            0.25f
+                        )
+                        : 1f
+                )
                 * Renderer.bridgeOpacity;
 
+            /*
+             * Центри двох Building.
+             */
             float x1 = x;
             float y1 = y;
 
-            float x2 = other.drawx();
-            float y2 = other.drawy();
+            float x2 =
+                other.drawx();
+
+            float y2 =
+                other.drawy();
 
             /*
-             * Фізична ширина мосту.
+             * Повна ширина блока.
              *
              * 1x1 = 8
              * 2x2 = 16
              * 3x3 = 24
              */
-            float width = size * tilesize;
+            float width =
+                size * tilesize;
 
             /*
-             * Від центра блока до його краю.
+             * Від геометричного центра
+             * до краю блока.
              */
-            float edge = width / 2f;
+            float edge =
+                width / 2f;
 
             boolean horizontal =
-                Math.abs(x2 - x1) >
+                Math.abs(x2 - x1)
+                    >
                 Math.abs(y2 - y1);
 
             float centerX =
@@ -159,11 +213,14 @@ public class BetaItemBridge extends ItemBridge{
             }
 
             /*
-             * Суцільне полотно.
+             * Суцільне полотно мосту.
              */
             if(bridgeLength > 0f){
 
-                Draw.color(betaBridgeColor);
+                Draw.color(
+                    betaBridgeColor
+                );
+
                 Draw.alpha(alpha);
 
                 if(horizontal){
@@ -191,7 +248,7 @@ public class BetaItemBridge extends ItemBridge{
             }
 
             /*
-             * Тимчасова стрілка.
+             * Тимчасова центральна стрілка.
              */
             float angle =
                 Angles.angle(
