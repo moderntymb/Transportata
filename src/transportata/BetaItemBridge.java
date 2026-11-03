@@ -4,7 +4,6 @@ import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
 import arc.math.Angles;
 import arc.math.Mathf;
-import arc.util.Time;
 
 import mindustry.Vars;
 import mindustry.core.Renderer;
@@ -18,12 +17,66 @@ public class BetaItemBridge extends ItemBridge{
 
     /*
      * Тимчасовий колір полотна.
-     * Пізніше замінимо його нормальною текстурою.
+     * Нормальні текстури зробимо пізніше.
      */
     public Color betaBridgeColor = Color.valueOf("6c7690");
 
     public BetaItemBridge(String name){
         super(name);
+    }
+
+    /*
+     * Тимчасовий костиль для 2x2.
+     *
+     * Опорний tile у блока 2x2 не знаходиться
+     * в геометричному центрі.
+     *
+     * Через це в двох напрямках губиться один тайл.
+     *
+     * Для 2x2:
+     * вправо  -> +1
+     * вгору   -> +1
+     *
+     * Для 1x1 і 3x3 нічого не змінюємо.
+     */
+    @Override
+    public boolean positionsValid(
+        int x1,
+        int y1,
+        int x2,
+        int y2,
+        int baseRange
+    ){
+
+        // тільки пряма лінія
+        if(x1 != x2 && y1 != y2){
+            return false;
+        }
+
+        int actualRange = baseRange;
+
+        if(size == 2){
+
+            /*
+             * Вправо.
+             */
+            if(y1 == y2 && x2 > x1){
+                actualRange += 1;
+            }
+
+            /*
+             * Вгору.
+             */
+            if(x1 == x2 && y2 > y1){
+                actualRange += 1;
+            }
+        }
+
+        if(x1 == x2){
+            return Math.abs(y1 - y2) <= actualRange;
+        }
+
+        return Math.abs(x1 - x2) <= actualRange;
     }
 
     public class BetaItemBridgeBuild extends ItemBridgeBuild{
@@ -34,8 +87,8 @@ public class BetaItemBridge extends ItemBridge{
             /*
              * Малюємо сам блок.
              *
-             * Не викликаємо ItemBridgeBuild.draw(),
-             * бо він намалює ванільне вузьке полотно.
+             * Не викликаємо ванільний ItemBridgeBuild.draw(),
+             * бо він намалює старе вузьке полотно.
              */
             Draw.rect(block.region, x, y);
 
@@ -53,13 +106,13 @@ public class BetaItemBridge extends ItemBridge{
 
             float alpha =
                 (fadeIn
-                    ? Math.max(hasPower ? warmup : 1f, 0.25f)
+                    ? Math.max(
+                        hasPower ? warmup : 1f,
+                        0.25f
+                    )
                     : 1f)
                 * Renderer.bridgeOpacity;
 
-            /*
-             * Центри двох мостів.
-             */
             float x1 = x;
             float y1 = y;
 
@@ -67,7 +120,7 @@ public class BetaItemBridge extends ItemBridge{
             float y2 = other.drawy();
 
             /*
-             * Повна фізична ширина блока:
+             * Фізична ширина мосту.
              *
              * 1x1 = 8
              * 2x2 = 16
@@ -76,73 +129,43 @@ public class BetaItemBridge extends ItemBridge{
             float width = size * tilesize;
 
             /*
-             * Від центру блока до його краю.
+             * Від центра блока до його краю.
              */
             float edge = width / 2f;
 
-            /*
-             * Визначаємо напрямок.
-             *
-             * Горизонтальний:
-             * [BLOCK]==========[BLOCK]
-             *
-             * Вертикальний:
-             * [BLOCK]
-             *    ||
-             *    ||
-             * [BLOCK]
-             */
             boolean horizontal =
                 Math.abs(x2 - x1) >
                 Math.abs(y2 - y1);
 
-            float centerX;
-            float centerY;
+            float centerX =
+                (x1 + x2) / 2f;
+
+            float centerY =
+                (y1 + y2) / 2f;
 
             float bridgeLength;
 
             if(horizontal){
 
                 bridgeLength =
-                    Math.abs(x2 - x1) - edge * 2f;
-
-                centerX = (x1 + x2) / 2f;
-                centerY = (y1 + y2) / 2f;
+                    Math.abs(x2 - x1)
+                    - edge * 2f;
 
             }else{
 
                 bridgeLength =
-                    Math.abs(y2 - y1) - edge * 2f;
-
-                centerX = (x1 + x2) / 2f;
-                centerY = (y1 + y2) / 2f;
+                    Math.abs(y2 - y1)
+                    - edge * 2f;
             }
 
             /*
-             * Не малюємо від'ємний/нульовий прямокутник,
-             * якщо блоки стоять дуже близько.
+             * Суцільне полотно.
              */
             if(bridgeLength > 0f){
 
                 Draw.color(betaBridgeColor);
                 Draw.alpha(alpha);
 
-                /*
-                 * Один суцільний прямокутник.
-                 *
-                 * Це НЕ 2 або 3 окремі лінії.
-                 *
-                 * 2x2:
-                 *
-                 * ██================██
-                 * ██================██
-                 *
-                 * 3x3:
-                 *
-                 * ███==============███
-                 * ███==============███
-                 * ███==============███
-                 */
                 if(horizontal){
 
                     Draw.rect(
@@ -168,8 +191,7 @@ public class BetaItemBridge extends ItemBridge{
             }
 
             /*
-             * Тимчасово залишаємо одну стрілку,
-             * щоб було видно напрямок роботи мосту.
+             * Тимчасова стрілка.
              */
             float angle =
                 Angles.angle(
